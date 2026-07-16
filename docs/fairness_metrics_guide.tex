@@ -1,0 +1,314 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}
+
+\title{Fairness Metrics Toolkit \\ \large A User Guide}
+\author{Pedro Salas-Rojo}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{What this is}
+
+This document is the user guide for the \textbf{Fairness Metrics Toolkit}, a
+self-contained R implementation of 13 binary (two-group) fairness metrics and
+4 multidimensional (N-subgroup) fairness metrics used to audit whether an
+algorithm's predictions treat a protected group fairly relative to a
+reference group.
+
+The toolkit is deliberately \textbf{metrics only}: it measures fairness, it
+does not implement or discuss methods to correct an unfair algorithm. It
+requires no packages beyond base R (\texttt{stats}), and ships with a
+synthetic example dataset so every function can be tried immediately.
+
+\subsection{Notation used throughout}
+
+\begin{itemize}
+  \item $G \in \{0,1\}$: protected attribute. $G=0$ is the disadvantaged
+        group, $G=1$ the advantaged/reference group.
+  \item $Y \in \{0,1\}$: true outcome.
+  \item $\hat Y \in \{0,1\}$: the algorithm's decision (denoted \texttt{Yhat}
+        in the code).
+  \item $\mathrm{TPR} = P(\hat Y=1 \mid Y=1)$, $\mathrm{FPR} = P(\hat Y=1 \mid Y=0)$,
+        $\mathrm{TNR} = P(\hat Y=0 \mid Y=0)$, $\mathrm{FNR} = P(\hat Y=0 \mid Y=1)$.
+  \item $\mathrm{PPV} = P(Y=1 \mid \hat Y=1)$ (precision), $\mathrm{NPV} = P(Y=0 \mid \hat Y=0)$.
+  \item $\mathrm{Acc} = P(\hat Y = Y)$.
+  \item $zg_m$: subgroup $m$ in an integer-coded partition \texttt{ZG} used by
+        the 4 multidimensional metrics (any number of subgroups).
+  \item $\varepsilon$ (\texttt{eps}): discrimination-aversion parameter for the
+        multidimensional metrics. Larger $\varepsilon$ relaxes the fairness
+        threshold; $\varepsilon = 0$ is the strictest case.
+\end{itemize}
+
+\section{Repository structure and quick start}
+
+\begin{verbatim}
+fairness_metrics/
+|-- README.md
+|-- fairness_functions.R                 <- every metric function
+|-- 01_load_data.R                       <- loads + validates the data
+|-- 02_compute_metrics_one_by_one.R      <- each metric, explained individually
+|-- 03_compute_all_metrics.R             <- every metric at once + summary CSV
+|-- data/mock_data.csv                   <- ships pre-built
+`-- docs/fairness_metrics_guide.pdf      <- this document
+\end{verbatim}
+
+\texttt{data/mock\_data.csv} ships pre-built, so no generation step is needed.
+From the repository root, run the scripts in order:
+
+\begin{verbatim}
+Rscript 02_compute_metrics_one_by_one.R
+Rscript 03_compute_all_metrics.R
+\end{verbatim}
+
+Running \texttt{03\_compute\_all\_metrics.R} writes a summary to
+\texttt{output/fairness\_metrics\_summary.csv}, created automatically on first
+run.
+
+To apply the toolkit to your own data, build a data frame with the columns
+described in Table~\ref{tab:datareq} and call \texttt{compute\_binary\_metrics()}
+and/or \texttt{compute\_all\_multidimensional()} directly -- nothing else in
+the repository needs to change.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+Column & Used by & Requirement \\
+\midrule
+\texttt{G}    & 13 binary metrics & exactly 2 values (any coding) \\
+\texttt{Y}    & 13 binary metrics & true outcome, binary (0/1) \\
+\texttt{Yhat} & 13 binary metrics & algorithm's decision, binary (0/1) \\
+\texttt{A}    & Conditional Equal Opportunity (optional) & any categorical variable \\
+\texttt{ZG}   & 4 multidimensional metrics & integer subgroup code $0,1,2,\dots$ \\
+\bottomrule
+\end{tabular}
+\caption{Data requirements to reuse the toolkit on new data.}
+\label{tab:datareq}
+\end{table}
+
+\section{The worked example: a loan-approval algorithm}
+
+\texttt{data/mock\_data.csv} was built by simulating 5{,}000 loan applicants.
+Each has covariates (income, credit score, employment years) that determine
+whether they would truly repay a loan ($Y$), and an algorithm predicts a
+repayment probability (\texttt{score}) and approves the loan if that
+probability clears 0.5 ($\hat Y$). The simulation builds in two sources of
+disparity across the protected attribute $G$ (0 = disadvantaged, 1 =
+advantaged):
+
+\begin{enumerate}
+  \item a structural gap in the applicant covariates themselves, reflecting a
+        real-world disparity upstream of any algorithm; and
+  \item a direct algorithmic penalty against $G=0$ on top of that -- the kind
+        of bias a fairness audit is meant to catch.
+\end{enumerate}
+
+A second attribute, \texttt{region}, is crossed with $G$ into four subgroups
+(\texttt{ZG} $= 2\cdot G + \texttt{region} \in \{0,1,2,3\}$) used by the
+multidimensional metrics, and \texttt{age\_band} is used to illustrate
+Conditional Equal Opportunity. No real data is used anywhere in this
+repository. With seed 123, the resulting sample has:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+ & $G=0$ (disadvantaged) & $G=1$ (advantaged) \\
+\midrule
+$N$                    & 2{,}255 & 2{,}745 \\
+True repayment rate, $P(Y=1)$   & 0.356 & 0.564 \\
+Approval rate, $P(\hat Y=1)$    & 0.251 & 0.616 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All numbers reported in the rest of this guide are computed directly from
+this dataset by \texttt{03\_compute\_all\_metrics.R}.
+
+\section{The 13 binary fairness metrics}
+
+Metrics ending in \texttt{\_diff} have expected value $0$ under parity;
+metrics ending in \texttt{\_ratio} have expected value $1$. Every metric
+compares $G=0$ against $G=1$.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{0.3\linewidth}p{0.32\linewidth}p{0.1\linewidth}p{0.16\linewidth}}
+\toprule
+Metric & Formula & Value & Reference \\
+\midrule
+Statistical Parity (\texttt{SP\_diff}) & $P(\hat Y{=}1|G{=}0)-P(\hat Y{=}1|G{=}1)$ & $-0.365$ & Dwork et al.\ (2012) \\
+Disparate Impact (\texttt{DI\_ratio}) & $P(\hat Y{=}1|G{=}0)/P(\hat Y{=}1|G{=}1)$ & $0.408$ & Feldman et al.\ (2015) \\
+Equal Opp., TPR (\texttt{EqOp\_plus\_diff}) & $\mathrm{TPR}(0)-\mathrm{TPR}(1)$ & $-0.296$ & Hardt et al.\ (2016) \\
+Equal Opp., TNR (\texttt{EqOp\_minus\_diff}) & $\mathrm{TNR}(0)-\mathrm{TNR}(1)$ & $0.298$ & Hardt et al.\ (2016) \\
+Eq.\ Odds, TPR (\texttt{EqOdds\_plus\_diff}) & $\mathrm{TPR}(0)-\mathrm{TPR}(1)$ & $-0.296$ & Hardt et al.\ (2016) \\
+Eq.\ Odds, FPR (\texttt{EqOdds\_minus\_diff}) & $\mathrm{FPR}(0)-\mathrm{FPR}(1)$ & $-0.298$ & Hardt et al.\ (2016) \\
+Treatment Equality, diff & $(\mathrm{FPR}/\mathrm{FNR})(0)-(\mathrm{FPR}/\mathrm{FNR})(1)$ & $-1.536$ & Berk et al.\ (2021) \\
+Treatment Equality, ratio & $(\mathrm{FPR}/\mathrm{FNR})(0)/(\mathrm{FPR}/\mathrm{FNR})(1)$ & $0.140$ & Berk et al.\ (2021) \\
+Overall Acc., diff & $\mathrm{Acc}(0)-\mathrm{Acc}(1)$ & $0.047$ & Berk et al.\ (2021) \\
+Overall Acc., ratio & $\mathrm{Acc}(0)/\mathrm{Acc}(1)$ & $1.070$ & Berk et al.\ (2021) \\
+Equalized Disincentive & $[\mathrm{TPR}{-}\mathrm{FPR}](0)-[\mathrm{TPR}{-}\mathrm{FPR}](1)$ & $0.003$ & Youden (1950) \\
+PPV parity & $\mathrm{PPV}(0)-\mathrm{PPV}(1)$ & $-0.039$ & Chouldechova (2017) \\
+NPV parity & $\mathrm{NPV}(0)-\mathrm{NPV}(1)$ & $0.100$ & Chouldechova (2017) \\
+\bottomrule
+\end{tabular}
+\caption{The 13 binary fairness metrics, with the value each takes on the mock loan-approval example (eps not applicable). Full citations in Section~\ref{sec:refs}.}
+\end{table}
+
+\subsection{How to read the worked example}
+
+The algorithm approves loans for group $G=0$ far less often than for $G=1$
+(Statistical Parity $=-0.365$; Disparate Impact $=0.408$, well below the
+conventional 0.8 ``four-fifths rule'' threshold). Part of this gap reflects
+a real difference in creditworthiness across groups (the true repayment rate
+is 0.356 vs.\ 0.564), but Equal Opportunity ($-0.296$) shows that even among
+applicants who \emph{would} repay, $G=0$ is approved substantially less often
+-- evidence of disparate treatment beyond what the underlying risk alone
+would justify. Equalized Odds fails on both components (TPR and FPR), so
+Equal Opportunity alone is not being satisfied ``by accident''.
+
+Interestingly, Overall Accuracy is nearly identical across groups (in fact
+slightly \emph{higher} for $G=0$, diff $=0.047$) and Equalized Disincentive
+(the group-level Youden's J gap) is essentially zero ($0.003$). This is the
+guide's central methodological point: \textbf{a single metric is not enough}.
+Accuracy parity, or a near-zero Youden's-J gap, can coexist with large gaps
+in Statistical Parity, Equal Opportunity, Disparate Impact, PPV and NPV --
+each metric encodes a different normative notion of what ``fair'' means, and
+they are not implied by one another (Kleinberg, Mullainathan \& Raghavan,
+2016, formalize exactly this kind of incompatibility).
+
+Finally, PPV parity ($-0.039$) and NPV parity ($0.100$) show that among
+\emph{approved} applicants, those from $G=0$ are somewhat less likely to
+actually repay than approved $G=1$ applicants -- the approval decision is
+less ``reliable'' when applied to $G=0$.
+
+\subsection{Conditional Equal Opportunity}
+
+Conditional Equal Opportunity re-computes the Equal Opportunity TPR gap
+separately within each level of a third variable (here, \texttt{age\_band}),
+which is useful to check whether an aggregate gap is driven by one stratum or
+is pervasive across all of them. This is an extension implemented in this
+toolkit, building on Hardt et al.\ (2016); it is not itself a metric with a
+single canonical source paper.
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Age band & $\mathrm{TPR}(G{=}0)$ & $\mathrm{TPR}(G{=}1)$ & CEO gap \\
+\midrule
+18--30 & 0.445 & 0.758 & $-0.313$ \\
+31--50 & 0.474 & 0.753 & $-0.279$ \\
+51+    & 0.457 & 0.765 & $-0.307$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The gap is essentially constant across strata ($\approx -0.30$ everywhere),
+so the aggregate Equal Opportunity violation is pervasive, not driven by a
+single age group.
+
+\section{The 4 multidimensional fairness metrics}
+
+These extend fairness beyond two groups to an arbitrary number of subgroups
+\texttt{ZG}. All four are governed by a discrimination-aversion parameter
+$\varepsilon$; the values below use $\varepsilon = 0.10$ on the four
+\texttt{ZG} subgroups of the mock data (\texttt{ZG} $=2\cdot G+\texttt{region}$).
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{0.22\linewidth}p{0.4\linewidth}p{0.08\linewidth}p{0.06\linewidth}p{0.16\linewidth}}
+\toprule
+Metric & Formula & Value & Fair? & Reference \\
+\midrule
+Statistical Subgroup Parity (\texttt{SubPar}) &
+  $\max_m\big[P(zg_m)\cdot|P(\hat Y{=}1)-P(\hat Y{=}1|zg_m)|-\varepsilon\big]$ &
+  $0.049$ & Yes & Kearns et al.\ (2018) \\
+False Positive Subgroup Parity (\texttt{FalPos}) &
+  $\max_m\big[P(Y{=}0,zg_m)\cdot|\mathrm{FPR}_{\text{all}}-\mathrm{FPR}_{zg_m}|-\varepsilon\big]$ &
+  $0.021$ & Yes & Kearns et al.\ (2018) \\
+Differential Fairness, $c=1$ (\texttt{DifFair}) &
+  $\max_m P(\hat Y{=}c|zg_m)/\min_m P(\hat Y{=}c|zg_m)-e^{\varepsilon}$ &
+  $2.606$ & No & Foulds et al.\ (2020) \\
+Differential Fairness, $c=0$ &
+  (same formula, $c=0$) &
+  $2.044$ & No & Foulds et al.\ (2020) \\
+Worst-Case Fairness, $c=1$ (\texttt{WorCas}) &
+  $1-\min_m P(\hat Y{=}c|zg_m)/\max_m P(\hat Y{=}c|zg_m)$ &
+  $0.616$ & No & Ghosh et al.\ (2021) \\
+Worst-Case Fairness, $c=0$ &
+  (same formula, $c=0$) &
+  $0.511$ & No & Ghosh et al.\ (2021) \\
+\bottomrule
+\end{tabular}
+\caption{The 4 multidimensional fairness metrics on the mock data ($\varepsilon = 0.10$). ``Fair?'' reports whether the metric's own fairness condition holds at that $\varepsilon$.}
+\end{table}
+
+Note the disagreement between the two ``subgroup'' metrics (SubPar, FalPos --
+both pass at $\varepsilon=0.10$) and the two ``ratio''-based metrics
+(DifFair, WorCas -- both fail). SubPar and FalPos weight each subgroup's
+deviation by its population share, so a disparity concentrated in a smaller
+subgroup contributes less to the global statistic; DifFair and WorCas instead
+look at the most extreme ratio across \emph{all} subgroups regardless of
+size, and are far more sensitive to exactly this kind of concentrated
+disparity (the two largest \texttt{ZG} subgroups here, 2 and 3, have approval
+rates around 0.60--0.63 vs.\ around 0.24--0.26 for subgroups 0 and 1). This is
+the same lesson as Section 3.1 at a different level: which metric you use
+determines what kind of unfairness you can detect.
+
+\section{References}
+\label{sec:refs}
+
+\begin{itemize}
+\item Berk, R., Heidari, H., Jabbari, S., Kearns, M., \& Roth, A.\ (2021).
+  Fairness in Criminal Justice Risk Assessments: The State of the Art.
+  \emph{Sociological Methods \& Research}, 50(1), 3--44.
+\item Chouldechova, A.\ (2017). Fair Prediction with Disparate Impact: A
+  Study of Bias in Recidivism Prediction Instruments. \emph{Big Data}, 5(2),
+  153--163.
+\item Dwork, C., Hardt, M., Pitassi, T., Reingold, O., \& Zemel, R.\ (2012).
+  Fairness Through Awareness. \emph{Proceedings of the 3rd Innovations in
+  Theoretical Computer Science Conference (ITCS)}.
+\item Feldman, M., Friedler, S. A., Moeller, J., Scheidegger, C., \&
+  Venkatasubramanian, S.\ (2015). Certifying and Removing Disparate Impact.
+  \emph{Proceedings of the 21st ACM SIGKDD International Conference on
+  Knowledge Discovery and Data Mining (KDD)}, 259--268.
+\item Foulds, J. R., Islam, R., Keya, K. N., \& Pan, S.\ (2020). An
+  Intersectional Definition of Fairness. \emph{2020 IEEE 36th International
+  Conference on Data Engineering (ICDE)}.
+\item Ghosh, A., Genuit, L., \& Reagan, M.\ (2021). Characterizing
+  Intersectional Group Fairness with Worst-Case Comparisons. \emph{Proceedings
+  of the 2nd Workshop on Diversity in Artificial Intelligence (DAI)}.
+\item Hardt, M., Price, E., \& Srebro, N.\ (2016). Equality of Opportunity in
+  Supervised Learning. \emph{Advances in Neural Information Processing
+  Systems (NeurIPS)}.
+\item Kearns, M., Neel, S., Roth, A., \& Wu, Z. S.\ (2018). Preventing
+  Fairness Gerrymandering: Auditing and Learning for Subgroup Fairness.
+  \emph{Proceedings of the 35th International Conference on Machine Learning
+  (ICML)}. Companion empirical study: Kearns, Neel, Roth \& Wu, An Empirical
+  Study of Rich Subgroup Fairness for Machine Learning, \emph{FAT* 2019}.
+\item Kleinberg, J., Mullainathan, S., \& Raghavan, M.\ (2016). Inherent
+  Trade-Offs in the Fair Determination of Risk Scores. \emph{arXiv:1609.05807}.
+\item Youden, W. J.\ (1950). Index for Rating Diagnostic Tests. \emph{Cancer},
+  3(1), 32--35.
+\end{itemize}
+
+\section*{Acknowledgments}
+
+Alexandros Puente Pomar (Research Assistant) developed the original
+implementation of these metrics that this toolkit builds on. His work -- the
+correctness and care in the underlying computations -- was excellent, and
+this public repository would not exist without it.
+
+\section*{How to cite this toolkit}
+
+Salas-Rojo, P.\ (2026). \emph{Fairness Metrics Toolkit}
+[Software]. \url{https://github.com/pedrosalasrojo/fairness_metrics}
+
+\end{document}

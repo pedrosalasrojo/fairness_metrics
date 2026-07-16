@@ -1,0 +1,12 @@
+# LaTeX build artifacts (docs/fairness_metrics_guide.pdf is committed, these are not)
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.synctex.gz
+docs/*.toc
+docs/compile_log*.txt
+
+# Mock-data generator (kept locally for development; the repo ships the
+# already-generated data/mock_data.csv instead) and run-time output
+generate_mock_data.R
+output/
