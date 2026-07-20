@@ -226,8 +226,8 @@ the decision owes to whom, not a fact the mathematics can settle.
 ## Acknowledgments
 
 Alexandros Puente Pomar (Research Assistant) developed the original
-implementation of these metrics that this toolkit builds on. His work — the
-correctness and care in the underlying computations — was excellent, and this
+implementation of these metrics that this toolkit builds on. His work, the
+correctness and care in the underlying computations, was excellent. This
 public repo would not exist without it.
 
 ## How to cite
