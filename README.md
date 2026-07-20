@@ -1,4 +1,4 @@
-# Fairness Metrics Toolkit
+ Fairness Metrics Toolkit
 
 **Author:** Pedro Salas-Rojo
 
@@ -11,14 +11,14 @@ This repo is **metrics only**. It does not implement or discuss correction
 methods (i.e. ways to *fix* an unfair algorithm) — only how to *measure*
 fairness, with a runnable example on synthetic data.
 
-No installation is required beyond R itself: every function here uses only
-base R (`stats`), no external packages.
+No installation is required beyond R itself. Every function uses only base R
+(`stats`), with no external packages.
 
 > **Start here to read the metrics correctly.** `docs/fairness_incompatibilities.pdf`
 > is a self-contained, proof-based guide to *why* the metrics in this toolkit
 > generally cannot all hold at once — the impossibility theorems of Chouldechova
 > (2017) and Kleinberg, Mullainathan & Raghavan (2017) — with worked numerical
-> examples. It is what tells you that a table of thirteen numbers is not thirteen
+> examples. It explains why a table of thirteen numbers is not thirteen
 > independent verdicts. See [The incompatibilities guide](#the-incompatibilities-guide) below.
 
 ---
@@ -204,30 +204,30 @@ illustrates:
   attainable only with equal base rates or perfect prediction — and the
   approximate version holds too, so it is not a knife-edge artifact.
 
-It is equally explicit about when the conflicts *vanish*: equal base rates (every
-metric can hold at once), perfect prediction (families 2 and 3 reconcile, but
-family 1 still fails whenever base rates differ), and weakening a family — e.g.
-Equal Opportunity + PPV parity is generically feasible because the FPR absorbs
-the base-rate gap. For the multidimensional metrics it covers *fairness
-gerrymandering* (Kearns et al., 2018): a classifier can satisfy statistical
-parity on every marginal attribute while violating it grossly on the
+The document is equally explicit about when the conflicts *vanish*: equal base
+rates (every metric can hold at once), perfect prediction (families 2 and 3
+reconcile, but family 1 still fails whenever base rates differ), and weakening a
+family — e.g. Equal Opportunity + PPV parity is generically feasible because the
+FPR absorbs the base-rate gap. For the multidimensional metrics it covers
+*fairness gerrymandering* (Kearns et al., 2018): a classifier can satisfy
+statistical parity on every marginal attribute while violating it grossly on the
 intersections, which is precisely what the subgroup metrics in this toolkit are
 built to detect.
 
-The practical reason this document matters for reading the toolkit's output: a
-table of thirteen metrics is **not** thirteen independent verdicts. Once base
-rates differ, blocks of metrics fail together for purely arithmetic reasons, so
-the base-rate gap is the first thing to inspect in any audit, and no single
-metric is the "correct" one — choosing a family is a normative choice about what
-the decision owes to whom, not a fact the mathematics can settle.
+Why this matters for reading the toolkit's output: a table of thirteen metrics
+is **not** thirteen independent verdicts. Once base rates differ, blocks of
+metrics fail together for purely arithmetic reasons, so the base-rate gap is the
+first thing to inspect in any audit, and no single metric is the "correct" one —
+choosing a family is a normative choice about what the decision owes to whom, not
+a fact the mathematics can settle.
 
 ---
 
 ## Acknowledgments
 
 Alexandros Puente Pomar (Research Assistant) developed the original
-implementation of these metrics that this toolkit builds on. His work, the
-correctness and care in the underlying computations, was excellent. This
+implementation of these metrics that this toolkit builds on. His work — the
+correctness and care in the underlying computations — was excellent. This
 public repo would not exist without it.
 
 ## How to cite
@@ -236,4 +236,3 @@ If you use this toolkit, please cite:
 
 > Salas-Rojo, P. (2026). *Fairness Metrics Toolkit*
 > [Software]. https://github.com/pedrosalasrojo/fairness_metrics
-
