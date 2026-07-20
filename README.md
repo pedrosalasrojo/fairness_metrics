@@ -14,6 +14,13 @@ fairness, with a runnable example on synthetic data.
 No installation is required beyond R itself: every function here uses only
 base R (`stats`), no external packages.
 
+> **Start here to read the metrics correctly.** `docs/fairness_incompatibilities.pdf`
+> is a self-contained, proof-based guide to *why* the metrics in this toolkit
+> generally cannot all hold at once — the impossibility theorems of Chouldechova
+> (2017) and Kleinberg, Mullainathan & Raghavan (2017) — with worked numerical
+> examples. It is what tells you that a table of thirteen numbers is not thirteen
+> independent verdicts. See [The incompatibilities guide](#the-incompatibilities-guide) below.
+
 ---
 
 ## Repository structure
@@ -28,7 +35,8 @@ fairness_metrics/
 ├── data/
 │   └── mock_data.csv                   <- synthetic loan-approval data (generated, not real; ships pre-built)
 └── docs/
-    └── fairness_metrics_guide.pdf      <- longer write-up: formulas, interpretation, worked example
+    ├── fairness_metrics_guide.pdf      <- longer write-up: formulas, interpretation, worked example
+    └── fairness_incompatibilities.pdf  <- proof-based guide to why these metrics generally cannot all hold at once
 ```
 
 Running `03_compute_all_metrics.R` writes a summary to `output/fairness_metrics_summary.csv`,
@@ -152,6 +160,69 @@ each number, and a worked example on the mock data.
 
 ---
 
+## The incompatibilities guide
+
+`docs/fairness_incompatibilities.pdf` (*Incompatibilities Between Fairness
+Metrics: A Self-Contained Guide*) explains why the metrics in this toolkit
+generally cannot all be satisfied at once, when exactly they conflict, and when
+they do not. It is written to be read on its own: every proof uses nothing
+beyond Bayes' rule and basic probability, and every result is followed by a
+worked numerical example on a loan-approval confusion matrix.
+
+The organizing idea, following Barocas, Hardt & Narayanan (2023), is that the
+thirteen binary metrics fall into three families, each a conditional-independence
+condition on the triple (Ŷ, Y, G):
+
+- **Independence** (Ŷ ⊥ G) — equal acceptance rates. Statistical Parity,
+  Disparate Impact.
+- **Separation** (Ŷ ⊥ G | Y) — equal error rates given the truth. Equalized
+  Odds, Equal Opportunity.
+- **Sufficiency** (Y ⊥ G | Ŷ) — a decision should mean the same thing in both
+  groups. PPV parity, NPV parity.
+
+The remaining binary metrics (accuracy parity, treatment equality, and the
+equalized disincentive / Youden's J) are one-dimensional functions of the
+family-2 error rates, and the four multidimensional metrics extend families 1
+and 2 from two groups to many subgroups.
+
+Everything reduces to a single quantity per group: the base rate
+p<sub>g</sub> = P(Y=1 | G=g). The document derives four identities from Bayes'
+rule and shows that, given the base rate, any two families' worth of parity pin
+down the third — so demanding parity across two families generically forces
+p<sub>a</sub> = p<sub>b</sub>. The main incompatibility results it proves and
+illustrates:
+
+- **Independence vs. Separation.** Under equalized odds, statistical parity holds
+  only if base rates are equal or the classifier is uninformative (TPR = FPR).
+- **Independence vs. Sufficiency.** Statistical parity together with PPV *and*
+  NPV parity forces equal base rates.
+- **Separation vs. Sufficiency — Chouldechova (2017).** With unequal base rates,
+  no non-degenerate, imperfect classifier can equalize both error rates and PPV
+  across groups. The COMPAS recidivism debate is exactly this conflict.
+- **The score version — Kleinberg, Mullainathan & Raghavan (2017).** Calibration
+  within groups plus balance for both the positive and negative classes is
+  attainable only with equal base rates or perfect prediction — and the
+  approximate version holds too, so it is not a knife-edge artifact.
+
+It is equally explicit about when the conflicts *vanish*: equal base rates (every
+metric can hold at once), perfect prediction (families 2 and 3 reconcile, but
+family 1 still fails whenever base rates differ), and weakening a family — e.g.
+Equal Opportunity + PPV parity is generically feasible because the FPR absorbs
+the base-rate gap. For the multidimensional metrics it covers *fairness
+gerrymandering* (Kearns et al., 2018): a classifier can satisfy statistical
+parity on every marginal attribute while violating it grossly on the
+intersections, which is precisely what the subgroup metrics in this toolkit are
+built to detect.
+
+The practical reason this document matters for reading the toolkit's output: a
+table of thirteen metrics is **not** thirteen independent verdicts. Once base
+rates differ, blocks of metrics fail together for purely arithmetic reasons, so
+the base-rate gap is the first thing to inspect in any audit, and no single
+metric is the "correct" one — choosing a family is a normative choice about what
+the decision owes to whom, not a fact the mathematics can settle.
+
+---
+
 ## Acknowledgments
 
 Alexandros Puente Pomar (Research Assistant) developed the original
@@ -165,3 +236,4 @@ If you use this toolkit, please cite:
 
 > Salas-Rojo, P. (2026). *Fairness Metrics Toolkit*
 > [Software]. https://github.com/pedrosalasrojo/fairness_metrics
+
