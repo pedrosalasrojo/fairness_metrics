@@ -1,4 +1,4 @@
- Fairness Metrics Toolkit
+# Fairness Metrics Toolkit
 
 **Author:** Pedro Salas-Rojo
 
@@ -8,7 +8,7 @@ audit whether an algorithm's predictions/decisions treat a protected group
 (e.g. by sex, ethnicity, region) fairly relative to a reference group.
 
 This repo is **metrics only**. It does not implement or discuss correction
-methods (i.e. ways to *fix* an unfair algorithm) — only how to *measure*
+methods (i.e. ways to *fix* an unfair algorithm), only how to *measure*
 fairness, with a runnable example on synthetic data.
 
 No installation is required beyond R itself. Every function uses only base R
@@ -16,8 +16,8 @@ No installation is required beyond R itself. Every function uses only base R
 
 > **Start here to read the metrics correctly.** `docs/fairness_incompatibilities.pdf`
 > is a self-contained, proof-based guide to *why* the metrics in this toolkit
-> generally cannot all hold at once — the impossibility theorems of Chouldechova
-> (2017) and Kleinberg, Mullainathan & Raghavan (2017) — with worked numerical
+> generally cannot all hold at once: the impossibility theorems of Chouldechova
+> (2017) and Kleinberg, Mullainathan & Raghavan (2017), with worked numerical
 > examples. It explains why a table of thirteen numbers is not thirteen
 > independent verdicts. See [The incompatibilities guide](#the-incompatibilities-guide) below.
 
@@ -40,7 +40,7 @@ fairness_metrics/
 ```
 
 Running `03_compute_all_metrics.R` writes a summary to `output/fairness_metrics_summary.csv`,
-created automatically on first run — that folder is not part of the repo itself.
+created automatically on first run. That folder is not part of the repo itself.
 
 ## Quick start
 
@@ -61,7 +61,7 @@ Rscript 02_compute_metrics_one_by_one.R
 Rscript 03_compute_all_metrics.R
 ```
 
-`01_load_data.R` is sourced automatically by scripts 02 and 03 — you only
+`01_load_data.R` is sourced automatically by scripts 02 and 03. You only
 need to run it directly if you want to inspect the data on its own.
 
 ### Using your own data instead of the mock example
@@ -75,10 +75,10 @@ your own data, your data frame needs:
 | `Y` | 13 binary metrics | true outcome, binary (0/1) |
 | `Yhat` | 13 binary metrics | algorithm's decision, binary (0/1) |
 | `A` | Conditional Equal Opportunity (optional) | any categorical stratifying variable |
-| `ZG` | 4 multidimensional metrics | integer subgroup code (0, 1, 2, ... — as many subgroups as you need) |
+| `ZG` | 4 multidimensional metrics | integer subgroup code (0, 1, 2, ... as many subgroups as you need) |
 
 Then call `compute_binary_metrics()` and/or `compute_all_multidimensional()`
-directly (see `03_compute_all_metrics.R` for the exact calls) — nothing else
+directly (see `03_compute_all_metrics.R` for the exact calls). Nothing else
 in the repo needs to change.
 
 ---
@@ -119,22 +119,22 @@ value of **1**.
 | 1 | Statistical Parity (`SP_diff`) | P(Ŷ=1\|G=0) − P(Ŷ=1\|G=1) | Dwork, Hardt, Pitassi, Reingold & Zemel (2012), *Fairness Through Awareness*, ITCS |
 | 2 | Disparate Impact (`DI_ratio`) | P(Ŷ=1\|G=0) / P(Ŷ=1\|G=1) | Feldman, Friedler, Moeller, Scheidegger & Venkatasubramanian (2015), *Certifying and Removing Disparate Impact*, KDD |
 | 3 | Equal Opportunity, TPR parity (`EqOp_plus_diff`) | TPR(G=0) − TPR(G=1) | Hardt, Price & Srebro (2016), *Equality of Opportunity in Supervised Learning*, NeurIPS |
-| 4 | Equal Opportunity, TNR parity (`EqOp_minus_diff`) | TNR(G=0) − TNR(G=1) | Hardt, Price & Srebro (2016) — mirror of #3 |
+| 4 | Equal Opportunity, TNR parity (`EqOp_minus_diff`) | TNR(G=0) − TNR(G=1) | Hardt, Price & Srebro (2016), mirror of #3 |
 | 5 | Equalized Odds, TPR component (`EqOdds_plus_diff`) | TPR(G=0) − TPR(G=1) | Hardt, Price & Srebro (2016) |
 | 6 | Equalized Odds, FPR component (`EqOdds_minus_diff`) | FPR(G=0) − FPR(G=1) | Hardt, Price & Srebro (2016) |
 | 7 | Treatment Equality, difference (`TreatmentEquality_diff`) | (FPR/FNR)(G=0) − (FPR/FNR)(G=1) | Berk, Heidari, Jabbari, Kearns & Roth (2021), *Fairness in Criminal Justice Risk Assessments: The State of the Art*, Sociological Methods & Research |
 | 8 | Treatment Equality, ratio (`TreatmentEquality_ratio`) | (FPR/FNR)(G=0) / (FPR/FNR)(G=1) | Berk, Heidari, Jabbari, Kearns & Roth (2021) |
 | 9 | Overall Accuracy, difference (`OverallAcc_diff`) | Acc(G=0) − Acc(G=1) | Berk, Heidari, Jabbari, Kearns & Roth (2021) |
 | 10 | Overall Accuracy, ratio (`OverallAcc_ratio`) | Acc(G=0) / Acc(G=1) | Berk, Heidari, Jabbari, Kearns & Roth (2021) |
-| 11 | Equalized Disincentive (`EqDisincentive_diff`) | [TPR−FPR](G=0) − [TPR−FPR](G=1) | Youden (1950), *Index for Rating Diagnostic Tests*, Cancer — group-parity version of Youden's J statistic |
+| 11 | Equalized Disincentive (`EqDisincentive_diff`) | [TPR−FPR](G=0) − [TPR−FPR](G=1) | Youden (1950), *Index for Rating Diagnostic Tests*, Cancer, group-parity version of Youden's J statistic |
 | 12 | PPV parity / Predictive Parity (`PPV_parity_diff`) | PPV(G=0) − PPV(G=1) | Chouldechova (2017), *Fair Prediction with Disparate Impact*, Big Data |
-| 13 | NPV parity (`NPV_parity_diff`) | NPV(G=0) − NPV(G=1) | Chouldechova (2017) — mirror of #12 |
+| 13 | NPV parity (`NPV_parity_diff`) | NPV(G=0) − NPV(G=1) | Chouldechova (2017), mirror of #12 |
 
 **Conditional Equal Opportunity** (`conditional_equal_opportunity()`): recomputes
 metric #3 (TPR parity) separately within each level of a third variable `A`.
 This is a natural extension of Hardt et al. (2016) implemented in this
 toolkit to check whether an overall Equal Opportunity gap is uniform across
-strata or concentrated in one — it is not itself a metric with a single
+strata or concentrated in one. It is not itself a metric with a single
 canonical source paper.
 
 ### 4 multidimensional (N-subgroup) metrics
@@ -173,11 +173,11 @@ The organizing idea, following Barocas, Hardt & Narayanan (2023), is that the
 thirteen binary metrics fall into three families, each a conditional-independence
 condition on the triple (Ŷ, Y, G):
 
-- **Independence** (Ŷ ⊥ G) — equal acceptance rates. Statistical Parity,
+- **Independence** (Ŷ ⊥ G): equal acceptance rates. Statistical Parity,
   Disparate Impact.
-- **Separation** (Ŷ ⊥ G | Y) — equal error rates given the truth. Equalized
+- **Separation** (Ŷ ⊥ G | Y): equal error rates given the truth. Equalized
   Odds, Equal Opportunity.
-- **Sufficiency** (Y ⊥ G | Ŷ) — a decision should mean the same thing in both
+- **Sufficiency** (Y ⊥ G | Ŷ): a decision should mean the same thing in both
   groups. PPV parity, NPV parity.
 
 The remaining binary metrics (accuracy parity, treatment equality, and the
@@ -188,7 +188,7 @@ and 2 from two groups to many subgroups.
 Everything reduces to a single quantity per group: the base rate
 p<sub>g</sub> = P(Y=1 | G=g). The document derives four identities from Bayes'
 rule and shows that, given the base rate, any two families' worth of parity pin
-down the third — so demanding parity across two families generically forces
+down the third, so demanding parity across two families generically forces
 p<sub>a</sub> = p<sub>b</sub>. The main incompatibility results it proves and
 illustrates:
 
@@ -196,19 +196,19 @@ illustrates:
   only if base rates are equal or the classifier is uninformative (TPR = FPR).
 - **Independence vs. Sufficiency.** Statistical parity together with PPV *and*
   NPV parity forces equal base rates.
-- **Separation vs. Sufficiency — Chouldechova (2017).** With unequal base rates,
+- **Separation vs. Sufficiency (Chouldechova 2017).** With unequal base rates,
   no non-degenerate, imperfect classifier can equalize both error rates and PPV
   across groups. The COMPAS recidivism debate is exactly this conflict.
-- **The score version — Kleinberg, Mullainathan & Raghavan (2017).** Calibration
+- **The score version (Kleinberg, Mullainathan & Raghavan 2017).** Calibration
   within groups plus balance for both the positive and negative classes is
-  attainable only with equal base rates or perfect prediction — and the
+  attainable only with equal base rates or perfect prediction, and the
   approximate version holds too, so it is not a knife-edge artifact.
 
 The document is equally explicit about when the conflicts *vanish*: equal base
 rates (every metric can hold at once), perfect prediction (families 2 and 3
 reconcile, but family 1 still fails whenever base rates differ), and weakening a
-family — e.g. Equal Opportunity + PPV parity is generically feasible because the
-FPR absorbs the base-rate gap. For the multidimensional metrics it covers
+family (e.g. Equal Opportunity + PPV parity is generically feasible because the
+FPR absorbs the base-rate gap). For the multidimensional metrics it covers
 *fairness gerrymandering* (Kearns et al., 2018): a classifier can satisfy
 statistical parity on every marginal attribute while violating it grossly on the
 intersections, which is precisely what the subgroup metrics in this toolkit are
@@ -217,8 +217,8 @@ built to detect.
 Why this matters for reading the toolkit's output: a table of thirteen metrics
 is **not** thirteen independent verdicts. Once base rates differ, blocks of
 metrics fail together for purely arithmetic reasons, so the base-rate gap is the
-first thing to inspect in any audit, and no single metric is the "correct" one —
-choosing a family is a normative choice about what the decision owes to whom, not
+first thing to inspect in any audit, and no single metric is the "correct" one.
+Choosing a family is a normative choice about what the decision owes to whom, not
 a fact the mathematics can settle.
 
 ---
@@ -226,8 +226,8 @@ a fact the mathematics can settle.
 ## Acknowledgments
 
 Alexandros Puente Pomar (Research Assistant) developed the original
-implementation of these metrics that this toolkit builds on. His work — the
-correctness and care in the underlying computations — was excellent. This
+implementation of these metrics that this toolkit builds on. His work, the
+correctness and care in the underlying computations, was excellent. This
 public repo would not exist without it.
 
 ## How to cite
